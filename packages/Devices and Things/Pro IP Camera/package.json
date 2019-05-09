@@ -1,0 +1,26 @@
+{
+    "author": "Tuicemen",
+    "version": "v1.2",
+    "title": "Pro IP camera",
+    "description": "Adds 4 pre-set & orientation for Pan & tilt capable cameras",
+    "published": "2019-05-18T00:00:00Z",
+    "sourcecode": "",
+    "homepage": "http://www.http://forums.tuicemen.net/index.php?topic=1345.0", 
+    "widgets": [
+        { 
+            "file": "tuicemen_media-procamera.zip",
+            "name":"Pro Camera",
+            "description": "Widget for controlling pre-set capable cameras"
+        }
+    ],
+    "programs": [
+        { 
+            "file": "1025-Pro_Ip-Camera.hgx",
+            "name":"Pro IpCamera",
+            "description": "Ip-Camera app",
+            "uid": "100201",
+            "group": "Device & Things" 
+        }
+    ],
+    "interfaces": [ ]
+}

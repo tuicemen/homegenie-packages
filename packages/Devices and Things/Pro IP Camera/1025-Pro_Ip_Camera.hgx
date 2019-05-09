@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>Program
+  .AddVirtualModules("Media.IpCameraPro", "Sensor", "tuicemen/media/procamera", 1, 10)
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.HomeURL", "Camera Web interface URL (your camera web UI address)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.ImageURL", "Camera image API URL (see your camera docs)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Username", "Username (optional)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Password", "Password (optional)", "password")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Recipient", "Recipient for emailed snapshot (optional)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Orientation", "Orientation (type True for Portrait view )", "checkbox")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Preset1", "preset1 url (optional,see your camera docs)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Preset2", "preset2 url (optional,see your camera docs)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Preset3", "preset3 url (optional,see your camera docs)", "text")
+  .AddFeature("Media.IpCameraPro", "Sensor", "IpCamera.Preset4", "preset4 url (optional,see your camera docs)", "text")
+   
+  .Run();
+</ScriptSetup>
+  <ScriptSource>//Pro IP Camera
+//Tuicemen 2019 v2
+var cameraModules = Modules.InDomain("Media.IpCameraPro");
+
+// initialize camera modules
+cameraModules.Each((module) =&gt; {
+  module.Parameter("Image.URL").Value = "/api/Media.IpCameraPro/" + module.Instance.Address + "/Camera.GetPicture/";
+  return false;
+});
+
+// - http://&lt;hg_address&gt;/api/Media.IpCameraPro/&lt;program_address&gt;/...
+When.WebServiceCallReceived("Media.IpCameraPro/", ( args ) =&gt; {
+  var request = Program.ParseApiCall(args);
+  object data = "{ 'ResponseValue' : 'ERROR' }";
+  try
+  {
+    //string parameter = ""; if (reqs.Length &gt; 3) parameter = reqs[3];
+    var module = cameraModules.WithAddress(request.Address).Get();
+    switch(request.Command)
+    {
+      // eg. http://&lt;hg_address&gt;/api/Media.IpCameraPro/&lt;program_address&gt;/Camera.GetPicture
+      case "Camera.GetPicture":     
+      data = Net
+          .WebService(module.Parameter("IpCamera.ImageURL").Value)
+          .WithCredentials(module.Parameter("IpCamera.Username").Value, module.Parameter("IpCamera.Password").Value)
+          .GetBytes();     
+        break;
+      case "Camera.MotionDetected":
+        data = "{ 'ResponseValue' : 'OK' }";
+        // blink Sensor.MotionDetect parameter
+        module.RaiseEvent("Sensor.MotionDetect", "255", "Generic IP Camera");
+        Pause(1);
+        module.RaiseEvent("Sensor.MotionDetect", "0", "Generic IP Camera");
+        break;
+        		case "Camera.Preset1":
+          // Program.Notify("Preset 1 pressed");          
+            if (module.Parameter("IpCamera.Preset1").Value != "")
+            {
+              //here we make a web call for turning to preset
+              
+              data = Net
+               .WebService(module.Parameter("IpCamera.Preset1").Value)
+              .WithCredentials(module.Parameter("IpCamera.Username").Value, module.Parameter("IpCamera.Password").Value)  
+              .GetData();
+              Program.Notify(data + "Moving to Preset 1");           
+            }
+            break;
+ 			case "Camera.Preset2":          
+           if (module.Parameter("IpCamera.Preset2").Value != "")
+            {
+            //here we make a web call for turning to preset
+             
+             data=Net
+              .WebService(module.Parameter("IpCamera.Preset2").Value)
+              .WithCredentials(module.Parameter("IpCamera.Username").Value, module.Parameter("IpCamera.Password").Value)  
+             .GetData();
+              Program.Notify(data + "Moving to Preset 2");
+            }
+            break;
+       case "Camera.Preset3":           
+         // ("Preset 3 pressed");
+           if (module.Parameter("IpCamera.Preset3").Value != "")
+           {
+              //here we make a web call for turning to preset             
+              data=Net
+              .WebService(module.Parameter("IpCamera.Preset3").Value)
+              .WithCredentials(module.Parameter("IpCamera.Username").Value, module.Parameter("IpCamera.Password").Value)  
+              .GetData();
+              Program.Notify(data + "Moving to Preset 3");
+            }
+            break;
+       case "Camera.Preset4":          
+         // ("Preset 4 pressed");
+           if (module.Parameter("IpCamera.Preset4").Value != "")
+           {
+              //here we make a web call for turning to preset             
+              data=Net
+              .WebService(module.Parameter("IpCamera.Preset4").Value)
+              .WithCredentials(module.Parameter("IpCamera.Username").Value, module.Parameter("IpCamera.Password").Value)  
+              .GetData();
+              Program.Notify(data + "Moving to Preset 4");
+            } 
+      break;
+ 
+      case "Camera.SnapShot": 
+      //collect image for mailing
+      var subject =("Snapshot from " +  module.Instance.Name + " Camera #"+module.Instance.Address);
+      var recipients =(module.Parameter("IpCamera.Recipient").Value);
+      var messagetext = ("Attached is snapshot taken " + DateTime.Now.ToString("MMM. d, h:mm tt"));
+      if (recipients != "")
+{    
+       //Program.Notify("E-Mail Pictures","Attempting to send " + subject);
+      Program.RunAsyncTask(() =&gt; {
+    byte[] img;   
+      img = Net
+          .WebService(module.Parameter("IpCamera.ImageURL").Value)
+          //.WithCredentials(module.Parameter("IpCamera.Username").Value, module.Parameter("IpCamera.Password").Value)
+          .GetBytes();  
+      Net.AddAttachment( "Snapshot.jpg", img );     
+    
+    if (Net.SendMessage(recipients, subject, messagetext) == true)
+      Program.Notify("E-Mail Pictures", "SUCCESS! Pictures sent.");
+    else Program.Notify("E-Mail Pictures", "ERROR: Pictures **NOT** sent.");
+        });
+      }
+        break;      
+    }
+  } catch (Exception e) { 
+    Program.Notify("IpCamera ERROR!", e.Message);
+  }
+  return data;
+});
+Program.GoBackground();
+</ScriptSource>
+  <ScriptErrors>[]</ScriptErrors>
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1025</Address>
+  <Name>Pro Ip Camera</Name>
+  <Description>Pro IP camera driver for Pan&amp; tilt capable cameras with pre-sets</Description>
+  <Group>Devices and Things</Group>
+  <Features>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.HomeURL</Property>
+      <Description>Camera Web interface URL (your camera web UI address)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.ImageURL</Property>
+      <Description>Camera image API URL (see your camera docs)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Username</Property>
+      <Description>Username (optional)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>password</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Password</Property>
+      <Description>Password (optional)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Recipient</Property>
+      <Description>Recipient for emailed snapshot (optional)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>checkbox</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Orientation</Property>
+      <Description>Orientation (type True for Portrait view )</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Preset1</Property>
+      <Description>preset1 url (optional,see your camera docs)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Preset2</Property>
+      <Description>preset2 url (optional,see your camera docs)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Preset3</Property>
+      <Description>preset3 url (optional,see your camera docs)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains>Media.IpCameraPro</ForDomains>
+      <ForTypes>Sensor</ForTypes>
+      <Property>IpCamera.Preset4</Property>
+      <Description>preset4 url (optional,see your camera docs)</Description>
+    </ProgramFeature>
+  </Features>
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime>2019-05-08T19:31:52.541342Z</ActivationTime>
+  <TriggerTime>2019-05-08T19:31:58.027534Z</TriggerTime>
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>
