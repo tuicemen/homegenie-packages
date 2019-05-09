@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>//Startup:
+Program.UseWidget("homegenie/generic/program");
+Program.AddOption("Shutdown.Delay", "0", "Number Mins till Shutdown (0 = now)", "slider:0:10:1");
+//Program:
+</ScriptSetup>
+  <ScriptSource>// CSharp Automation Program Plugin
+// Tuicemen 2019
+//performs a shutdown of the RPi
+
+ var delay = Program.Option("Shutdown.Delay").Value;
+//Program.Notify("Safe Shutdown: ", "Started with "+ delay +"min/s delay");
+var proc = new System.Diagnostics.Process {
+StartInfo = new System.Diagnostics.ProcessStartInfo {
+  FileName = "/bin/bash",
+  Arguments = "-c \"sudo -S shutdown -h +" + delay +" &amp;&amp; echo 'Warning: Shutdown will happen in' " + delay +"' mins'\"",
+    UseShellExecute = false,
+	RedirectStandardOutput = true,
+} // end ProcessStartInfo
+}; //end Process
+
+// This gets the data if something returned (i.e. "echo xxxx")
+proc.Start();
+	while (!proc.StandardOutput.EndOfStream) {
+		string line = proc.StandardOutput.ReadLine();
+		Program.Notify("Shutdown info:", line);
+		Pause(1);
+	} // end while EndOfStream
+  
+ 
+</ScriptSource>
+  <ScriptErrors>[]</ScriptErrors>
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1009</Address>
+  <Name>Safe Shutdown</Name>
+  <Description>Performs a Safe Shutdown</Description>
+  <Group>Tools</Group>
+  <Features />
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime>2019-03-22T16:37:23.139935Z</ActivationTime>
+  <TriggerTime xsi:nil="true" />
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>// Put your trigger code logic here.
+// To execute the Code To Run,
+// use a 'return true' or 'return false' otherwise.
+
+Program.UseWidget("tuicemen/tools/info");
+return true;</ScriptSetup>
+  <ScriptSource>// CSharp Automation Program Plugin
+// Display the date, time + time running + cpu temperature
+//tuicemen 2019 Version 3 (requires tuicemen status widget)
+
+var count=0;  
+var lastDate="";
+var lastUp="";
+var lastCPU="";
+var lastFree="";
+var lastSize="";  
+var lastMem="";
+var module = Modules.InDomain("tuicemen/tools/info").Get();
+while (Program.IsEnabled)
+{
+  if (lastDate !=DateTime.Now.ToString(" ddd. MMM. dd ")){
+  Program.RaiseEvent("StatusWidget.📅Date:", DateTime.Now.ToString(" ddd. MMM. dd "),"");
+    lastDate =DateTime.Now.ToString(" ddd. MMM. dd ");
+  }
+  Program.RaiseEvent("StatusWidget.🕑Now:", DateTime.Now.ToString(" h:mm tt "),"");
+   if(count==0||lastUp==""){
+  var proc = new System.Diagnostics.Process { 
+  StartInfo = new System.Diagnostics.ProcessStartInfo {
+   FileName = "/bin/bash",
+   Arguments = "-c \"sudo uptime\"",
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+} // end ProcessStartInfo
+}; //end Process
+// This gets the data if something returned (i.e. "echo xxxx")
+proc.Start();
+     	while (!proc.StandardOutput.EndOfStream) {
+		string lines = proc.StandardOutput.ReadLine();
+        string line= lines.Replace("up ",",");
+        string less = line.Split(',')[1];
+          if (lastUp !=less)
+		{Program.RaiseEvent("StatusWidget.🕑Up⇪:", less, "");
+        lastUp =less;
+        }
+      } // end if while End
+     
+   }
+  if (count==1||lastCPU=="") {
+   var proc = new System.Diagnostics.Process { 
+  StartInfo = new System.Diagnostics.ProcessStartInfo {
+    FileName = "/bin/bash",
+   Arguments = "-c \"vcgencmd measure_temp\"",
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+ } // end else ProcessStartInfo
+}; //end else Process 
+// This gets the data if something returned for else (i.e. "echo xxxx")
+    proc.Start();
+    
+	while (!proc.StandardOutput.EndOfStream) {
+		string lines = proc.StandardOutput.ReadLine();
+      lines= lines.Replace("'","°");
+     lines= lines.Replace("temp=","");
+      if (lastCPU !=lines)
+        {Program.RaiseEvent("StatusWidget.CPU🌡:", lines, "");
+        lastCPU=lines;
+        }
+      } // end else while End
+    
+    }
+  // newcode start
+  if(count==2||lastFree=="") {
+  var proc = new System.Diagnostics.Process { 
+  StartInfo = new System.Diagnostics.ProcessStartInfo {
+    FileName = "/bin/bash",
+  Arguments = "-c \"df  --output=avail --total -h\"",
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+ } // end else ProcessStartInfo
+}; //end else Process 
+// This gets the data if something returned for else (i.e. "echo xxxx")
+    proc.Start();
+    int c=0;
+	while (!proc.StandardOutput.EndOfStream) {
+		string lines = proc.StandardOutput.ReadLine();
+      c++;
+      
+      if (lastFree !=lines)
+         {
+        if(c==10)
+          {
+        Program.RaiseEvent("StatusWidget.Disk📀:", lines +" Free", "");
+        lastFree=lines;}
+        }
+      } // end else while End
+    
+    }
+  // new code end
+  if(count==3||lastSize=="") {
+  var proc = new System.Diagnostics.Process { 
+  StartInfo = new System.Diagnostics.ProcessStartInfo {
+    FileName = "/bin/bash",
+  Arguments = "-c \"df  --output=size --total -h\"",
+   
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+ } // end else ProcessStartInfo
+}; //end else Process 
+// This gets the data if something returned for else (i.e. "echo xxxx")
+    proc.Start();
+    int c=0;
+	while (!proc.StandardOutput.EndOfStream) {
+		string lines = proc.StandardOutput.ReadLine();
+      c++;
+      
+      if (lastSize !=lines)
+        {
+          if (c==10)
+          {
+           Program.RaiseEvent("StatusWidget.Disk💿:", lines+ " Total size", "");
+           lastSize=lines;}
+        }
+      } // end else while End
+    }
+  // new code end
+  if(count==4||lastMem=="") {
+  var proc = new System.Diagnostics.Process { 
+  StartInfo = new System.Diagnostics.ProcessStartInfo {
+    FileName = "/bin/bash",
+  //Arguments = "-c \"free --total -h\"",
+    Arguments = "-c \"cat /proc/meminfo\"",
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+ } // end else ProcessStartInfo
+}; //end else Process 
+// This gets the data if something returned for else (i.e. "echo xxxx")
+    proc.Start();
+   
+	while (!proc.StandardOutput.EndOfStream) {
+		string lines = proc.StandardOutput.ReadLine();
+         if (lastMem !=lines)
+        { if (lines.StartsWith("MemTotal:"))
+        {lines=lines.Replace("MemTotal:","");
+          Program.RaiseEvent("StatusWidget.Me🇲Total:", lines, "");}  
+         
+         if (lines.StartsWith("MemAvailable:"))
+        {lines=lines.Replace("MemAvailable:","");
+          Program.RaiseEvent("StatusWidget.MemAvail:", lines, "");}  
+         
+        if (lines.StartsWith("MemFree:"))
+        {lines=lines.Replace("MemFree:","");
+          Program.RaiseEvent("StatusWidget.MemFree:", lines, "");
+        lastMem=lines;}
+        }
+      } // end else while End
+    }
+// new code end
+  count = count+1;
+ if (count==5)
+   count=0;
+   	Pause(60);
+}
+
+</ScriptSource>
+  <ScriptErrors>[]</ScriptErrors>
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1019</Address>
+  <Name>Status Info</Name>
+  <Description>Displays Date, Time now, RPi up time, &amp; RPi CPU temperature</Description>
+  <Group>Tools</Group>
+  <Features />
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime xsi:nil="true" />
+  <TriggerTime xsi:nil="true" />
+  <Type>CSharp</Type>
+  <IsEnabled>false</IsEnabled>
+</ProgramBlock>

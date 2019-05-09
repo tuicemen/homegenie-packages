@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>//Startup:
+Program.UseWidget("homegenie/generic/program");
+Program.AddOption("RPiUpdate.Confirm", "-y", "type -y to auto update else leave blank", "text");
+//Program:
+</ScriptSetup>
+  <ScriptSource>// CSharp Automation Program Plugin
+// Tuicemen 2019
+//performs a package update for the RPi
+
+var varify = Program.Option("RPiUpdate.Confirm").Value;
+
+Program.Notify("Update: ", "Started "+ varify + ".");
+var proc = new System.Diagnostics.Process {
+StartInfo = new System.Diagnostics.ProcessStartInfo {
+  FileName = "/bin/bash",
+   Arguments = "-c \"sudo -S apt update " + varify +"\"",
+    UseShellExecute = false,
+	RedirectStandardOutput = true,
+} // end ProcessStartInfo
+}; //end Process
+
+// This gets the data if something returned (i.e. "echo xxxx")
+proc.Start();
+	while (!proc.StandardOutput.EndOfStream) {
+		string line = proc.StandardOutput.ReadLine();
+		Program.Notify("Update info:", line);
+		Pause(1);
+	} // end while EndOfStream</ScriptSource>
+  <ScriptErrors>[]</ScriptErrors>
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1012</Address>
+  <Name>RPi Update</Name>
+  <Description>Performs the terminal Package Update command</Description>
+  <Group>Tools</Group>
+  <Features />
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime>2019-03-22T21:14:23.533258Z</ActivationTime>
+  <TriggerTime xsi:nil="true" />
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>

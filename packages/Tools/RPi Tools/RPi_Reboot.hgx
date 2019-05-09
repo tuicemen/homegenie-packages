@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>//Startup:
+Program.UseWidget("homegenie/generic/program");
+Program.AddOption("RPiReboot.Delay", "1", " Number Mins till Reboot", "slider:0:10:1");
+//Program:</ScriptSetup>
+  <ScriptSource>// CSharp Automation Program Plugin
+// Tuicemen 2019
+//performs a reboot of the RPi
+//Program.Notify("RPi Reboot: ", "Started");
+var delay = Program.Option("RPiReboot.Delay").Value;
+var proc = new System.Diagnostics.Process {
+StartInfo = new System.Diagnostics.ProcessStartInfo {
+  FileName = "/bin/bash",
+  Arguments = "-c \"sudo -S shutdown -r +" + delay +" &amp;&amp; echo 'Warning: Shutdown will happen in' " + delay +"' mins'\"",
+  
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+} // end ProcessStartInfo
+}; //end Process
+
+// This gets the data if something returned (i.e. "echo xxxx")
+proc.Start();
+	while (!proc.StandardOutput.EndOfStream) {
+		string line = proc.StandardOutput.ReadLine();
+		Program.Notify("RPi Reboot info:", line);
+		//Pause(1);
+	} // end while EndOfStream
+  
+ 
+</ScriptSource>
+  <ScriptErrors />
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1010</Address>
+  <Name>RPi Reboot</Name>
+  <Description>Performs a Raspberry Pi Reboot after configured delay</Description>
+  <Group>Tools</Group>
+  <Features />
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime xsi:nil="true" />
+  <TriggerTime xsi:nil="true" />
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>

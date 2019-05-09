@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>//Startup:
+Program.UseWidget("homegenie/generic/program");</ScriptSetup>
+  <ScriptSource>/// CSharp Automation Program Plugin
+// Tuicemen 2019
+//Attempt to freeup disk space
+Program.Notify("RPi Disk Cleaner", "Started");
+var proc = new System.Diagnostics.Process {
+StartInfo = new System.Diagnostics.ProcessStartInfo {
+  FileName = "/bin/bash",
+  Arguments = "-c \"sudo apt-get clean &amp;&amp; sudo sudo apt-get autoremove -y\"",
+  
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+} // end ProcessStartInfo
+}; //end Process
+
+// This gets the data if something returned (i.e. "echo xxxx")
+proc.Start();
+	while (!proc.StandardOutput.EndOfStream) {
+		string line = proc.StandardOutput.ReadLine();
+		Program.Notify("RPi Disk Cleaner", line);
+		//Pause(1);
+	} // end while EndOfStream
+  Program.Notify("RPi Disk Cleaner","Finished");
+ 
+</ScriptSource>
+  <ScriptErrors />
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1015</Address>
+  <Name>RPi Drive Cleaner</Name>
+  <Description>Attempts to free up disk space used from app installs and updates</Description>
+  <Group>Tools</Group>
+  <Features />
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime>2019-04-18T23:37:26.324627Z</ActivationTime>
+  <TriggerTime>2019-04-18T23:40:47.880859Z</TriggerTime>
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>

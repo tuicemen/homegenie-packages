@@ -1,0 +1,68 @@
+{
+    "author": "Tuicemen",
+    "version": "v1.2",
+    "title": "RPI Tools",
+    "description": "A group of tools to help RPI users",
+    "published": "2019-05-18T00:00:00Z",
+    "sourcecode": "",
+    "homepage": "http://www.http://forums.tuicemen.net/index.php?topic=1345.0", 
+    "widgets": [
+        { 
+            "file": "tuicemen_tools.zip",
+            "name":"Status info",
+            "description": "Widget for controlling pre-set capable cameras"
+        }
+    ],
+    "programs": [
+        { 
+            "file": "staus info.hgx",
+            "name":"Status info",
+            "description": "displays info of CPU temperature,time now, time running,CPU temperature, disk and memory info",
+            "uid": "1021",
+            "group": "Tools"
+        }   
+        {
+            "file": "RPi_Memory_Cleaner.hgx",
+            "name":"RPi Memory Cleaner",
+            "description": "clears cashe memory",
+            "uid": "1022",
+            "group": "Tools" 
+        }
+        {
+            "file": "RPi_Drive_Cleaner.hgx",
+            "name":"RPi Drive Cleaner",
+            "description": "frees up space used but not release from updates and upgrades",
+            "uid": "1015",
+            "group": "Tools" 
+        }
+        {
+            "file": "RPi_Reboot.hgx",
+            "name":"RPi Reboot",
+            "description": "Reboots RPI from inside HG option to set delay available",
+            "uid": "1010",
+            "group": "Tools" 
+        }
+        {
+            "file": "RPi_Update.hgx",
+            "name":"RPi Update",
+            "description": "Updates RPI packages from inside HG",
+            "uid": "1012",
+            "group": "Tools" 
+        }
+        {
+            "file": "DateTime_reset.hgx",
+            "name":"DateTime Reset",
+            "description": "gets correct time and sets it if RPI date or time is off",
+            "uid": "1011",
+            "group": "Tools" 
+        }
+        {
+            "file": "Safe_Shutdown.hgx",
+            "name":"Safe Shutdown",
+            "description": "Safely shuts down RPI from inside HG ,Option to set delay available",
+            "uid": "109",
+            "group": "Tools" 
+        }
+    ],
+    "interfaces": [ ]
+}

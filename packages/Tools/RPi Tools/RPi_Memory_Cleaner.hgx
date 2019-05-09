@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>//Startup:
+Program.UseWidget("homegenie/generic/program");</ScriptSetup>
+  <ScriptSource>// CSharp Automation Program Plugin
+// Tuicemen 2019
+//Attemps to clear up some memory
+Program.Notify("RPi Memory Cleaner: ", "Started");
+var proc = new System.Diagnostics.Process {
+StartInfo = new System.Diagnostics.ProcessStartInfo {
+
+  FileName = "/bin/bash",
+   Arguments = "-c \"sudo sysctl vm.drop_caches=1 &amp;&amp; sudo sysctl vm.drop_caches=2 &amp;&amp; sudo sysctl vm.drop_caches=3 &amp;&amp; sync \"",
+	UseShellExecute = false,
+	RedirectStandardOutput = true,
+} // end ProcessStartInfo
+}; //end Process
+// This gets the data if something returned (i.e. "echo xxxx")
+proc.Start();
+	while (!proc.StandardOutput.EndOfStream) {
+		string line = proc.StandardOutput.ReadLine();
+		Program.Notify("RPi Memory Cleaner:", line);
+		//Pause(1);
+	} // end while EndOfStream
+Program.Notify("RPi Memory Cleaner","Finished");</ScriptSource>
+  <ScriptErrors>[]</ScriptErrors>
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1022</Address>
+  <Name>RPi Memory Cleaner</Name>
+  <Description>Attempts to free up usable memory  freeing up cache memory</Description>
+  <Group>Tools</Group>
+  <Features />
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime>2019-04-19T01:01:08.888877Z</ActivationTime>
+  <TriggerTime xsi:nil="true" />
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>
