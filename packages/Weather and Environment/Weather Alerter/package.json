@@ -1,0 +1,26 @@
+{
+    "author": "Tuicemen",
+    "version": "v1.0",
+    "title": "Weather Alerter",
+    "description": "monitors weather conditions using open Weather Map and provides alerts",
+    "published": "2019-05-06T00:00:00Z",
+    "sourcecode": "",
+    "homepage": "http://www.http://forums.tuicemen.net", 
+    "widgets": [
+        { 
+            "file": "tuicemen_tools_WeatherAlert.zip",
+            "name":"Weather Alerter",
+            "description": "Widget for monitoring weather conditions and alerts"
+        }
+    ],
+    "programs": [
+        { 
+            "file": "Weather Alerter.hgx",
+            "name":"Weather Alerter",
+            "description": "watches weather conditions and performs alerts based on users trigger values",
+            "uid": "1008",
+            "group": "Weather and Enviroment" 
+        }
+    ],
+    "interfaces": [ ]
+}

@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ProgramBlock xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ScriptSetup>Program
+  .UseWidget("tuicemen/tools/weatheralerter")
+  //.UseWidget("homegenie/generic/status")
+  .AddOption("Weather.Units", "", "Select '1' Imperial units or '0' Metric units", "slider:0:2:1")
+  // note: both wind speed and barometer conditions must meet condition to fire the alert
+  .AddOption("Weather.WindSpeed", "", "Type Value for WindSpeed if greater then(Required for custom sever weather email alerts)", "text")
+  .AddOption("Weather.Barometer", "", "Type Value for Barometer if less then(Required for custom sever weather email alerts)", "text")
+  .AddOption("Weather.Recipents","","Type email address to recieve optional custom sever weather alerts","text")
+  .AddOption("Weather.Message","","Type message of optional custom Sever Weather Alert","text")
+  .AddOption("Weather.WindAlert", "40", "Select WindSpeed if greater then(used for alerts in Widget)", "slider:5:120:5")
+  .AddOption("Weather.TempHiAlert", "25", "Select Temperature if greater then(used for alerts in Widget)", "slider:0:120:5")
+  .AddOption("Weather.TempLoAlert", "0", "Select Temperature if less then(used for alerts in Widget)", "slider:-40:60:5")
+  .AddOption("Weather.PrecipAlert", "5", "Select Precipitation if greater then(used for alerts in Widget)", "slider:0:100:5")
+  .AddOption("Weather.BaroHiAlert", "1070", "Select Barometer if greater then(used for alerts in Widget)", "slider:1020:1070:5")
+  .AddOption("Weather.BaroLoAlert", "930", "Select Barometer if less then(used for alerts in Widget)", "slider:930:1020:5")
+  .AddOption("Weather.HumidHiAlert", "50", "Select Humidity if greater then(used for alerts in Widget)", "slider:0:95:5")
+  //.AddOption("Weather.HumidLoAlert", "", "Select Humidity if less then(used for alerts in Widget)", "slider:5:40:5")
+  
+  .AddFeature("", "Sensor,Switch,Light,Dimmer,Siren", "WeatherTriggers.Enable", "Enable WeatherTrigger Control", "checkbox")
+  .AddFeature("", "Sensor,Switch,Light,Dimmer,Siren", "WeatherTriggers.Condition", "Type Condition (TEMP,WIND,RAIN,SNOW,PRESS,HUMID)", "text")
+  .AddFeature("", "Sensor,Switch,Light,Dimmer,Siren", "WeatherTriggers.Trigger", "Type when value is (&gt; or &lt;)", "text")
+  .AddFeature("", "Light,Sensor,Switch,Dimmer,Siren", "WeatherTriggers.OnNumber", "Select On triggering value (1070=ignor)", "slider:-40:1070:5")
+  .AddFeature("", "Light,Sensor,Switch,Dimmer,Siren", "WeatherTriggers.OffNumber", "Select Off triggering value(1070=ignor)", "slider:-40:1070:5")
+  .AddFeature("", "Light,Sensor,Switch,Dimmer,Siren", "WeatherTriggers.Timeout", "Seconds till module turns Off (0=ignor)", "slider:0:3600:30")
+  
+  .Run();
+</ScriptSetup>
+  <ScriptSource>//Weather Alerter C#
+//tuicemen 2019 ver 1.0 beta
+//widget options
+var Units=Program.Option("Weather.Units").DecimalValue;// coded
+var SeverWind= Program.Option("Weather.WindSpeed").DecimalValue;
+var SeverBar= Program.Option("Weather.Barometer").DecimalValue;
+var Recipients= Program.Option("Weather.Recipients").Value;
+var Message= Program.Option("Weather.Message").Value;
+var HiWind= Program.Option("Weather.WindAlert").DecimalValue;// coded
+var HiTemp= Program.Option("Weather.TempHiAlert").DecimalValue;// coded
+var LowTemp= Program.Option("Weather.TempLowAlert").DecimalValue;// coded
+var HiPrecip= Program.Option("Weather.PrecipAlert").DecimalValue;// coded
+var BarLow= Program.Option("Weather.BaroLowAlert").DecimalValue;//coded
+var BarHi= Program.Option("Weather.BaroHiAlert").DecimalValue;//coded
+var HumidHi= Program.Option("Weather.HumidHiAlert").DecimalValue;//coded
+//trigger variables
+var WeatherTriggers_ENABLE = "WeatherTriggers.Enable";// coded
+var Con_Watch = "WeatherTriggers.Condition";//TEMP,WIND,RAIN,SNOW,PRESS,HUMID// coded
+var Con_OffNumber = "WeatherTriggers.OffNumber ";// coded
+var Con_Trigger= "WeatherTriggers.Trigger";//&lt; or &gt;// coded
+var Con_OnNumber= "WeatherTriggers.OnNumber";  //-40 to 1070// coded
+var time_out ="WeatherTriggers.Timeout";// coded
+var T_Units="";
+var W_Units="";
+var P_Units= "";
+var Pres_Units="";
+var LAST_EVENT = "WeatherTriggers.LastEvent";
+var Last_press = Program.WithName("OpenWeatherMap").Parameter("Sensor.Pressure").DecimalValue;
+var lastvalues="";
+var Oldsnow=Last_press;
+var Oldrain =Last_press;
+var Oldhumidity=Last_press;  
+var Oldwind =Last_press;
+var Oldtemperature=Last_press;
+var Oldpresure=Last_press+1;
+var Olddirection="";
+
+var arrow ="↕";
+var smart_devices = Modules.WithFeature(WeatherTriggers_ENABLE);
+var count = 0;
+var GetDomainAddress = new Func&lt;string, dynamic&gt;((domainAddress)=&gt;{
+  dynamic v = new ExpandoObject();
+  v.Domain = "0";
+  v.Address = "0";
+  if (domainAddress.IndexOf(":") &gt; 0)
+  {
+    v.Domain = domainAddress.Substring(0, domainAddress.LastIndexOf(':'));
+    v.Address = domainAddress.Substring(domainAddress.LastIndexOf(':') + 1);
+  }
+  return v;
+});
+
+if(Units!=0){
+   T_Units="°F";
+   W_Units="MPh";
+   P_Units="in/h";
+  Pres_Units= "KPa";}
+else{
+    T_Units="°C";
+    W_Units="KMh";
+    P_Units= "mm/h";
+    Pres_Units= "HPa";}
+  
+ var module = Modules.InDomain("tuicemen/tools/weatheralerter").Get();
+while (Program.IsEnabled)
+  {
+  var temperature = Program.WithName("OpenWeatherMap").Parameter("Sensor.Temperature").DecimalValue;
+var wind = Program.WithName("OpenWeatherMap").Parameter("Sensor.Wind.Speed").DecimalValue;
+var snow = Program.WithName("OpenWeatherMap").Parameter("Sensor.Precipitation.Snow").DecimalValue;   
+var rain = Program.WithName("OpenWeatherMap").Parameter("Sensor.Precipitation.Rain").DecimalValue; 
+var presure = Program.WithName("OpenWeatherMap").Parameter("Sensor.Pressure").DecimalValue;
+var humidity = Program.WithName("OpenWeatherMap").Parameter("Sensor.Humidity").DecimalValue;
+var oldtime=  Program.WithName("OpenWeatherMap").Parameter("Conditions.LastUpdated").Value;  
+var winddeg =Program.WithName("OpenWeatherMap").Parameter("Sensor.Wind.Direction").DecimalValue;
+var conditions= Program.WithName("OpenWeatherMap").Parameter("Conditions.Status").Value;
+ if (Units== 2 )// conversion needs to be done
+ {temperature=(temperature*9)/5+32;
+  temperature = Math.Round(temperature, 1);
+ wind=wind*0.6214;
+  wind = Math.Round(wind, 1);
+  rain=rain/25.4;
+  rain = Math.Round(rain, 1); 
+  snow=snow/25.4;
+  snow = Math.Round(rain, 1);
+    
+}
+  
+    if (oldtime!=lastvalues)    
+    {
+      //code for trend symbols
+    if (Last_press== presure)
+{arrow= "↕";} 
+ if (Last_press&gt; presure)
+    {arrow= "↓";}
+ if (Last_press&lt; presure)
+{arrow= "↑";}
+      Last_press = presure;
+   var time=(DateTime.Now.ToString("MMM. d, h:mm tt"));
+    Program.RaiseEvent("StatusWidget.↑Updated:",time , "d");
+     Program.RaiseEvent("StatusWidget.Currently:", conditions, "");
+      
+    lastvalues = oldtime;}
+  // code to send severweather alert emails
+  if (wind &gt; SeverWind &amp;&amp; presure &lt; SeverBar &amp;&amp; Recipients != "" &amp;&amp; Last_press== presure)
+  {//send email   
+    if (Message=="")
+      {Message = "Sever Weather Alert from HG ";}
+          Program.RunAsyncTask(()=&gt;{
+          Net.SendMessage(Recipients, "Sever Weather Alert", Message);
+        });  
+            Program.Notify("Sever Weather Alert E-mail Sent");
+                            }
+  //end severweather email code
+
+  //Metric or imperial units 
+ var TUnits=T_Units;
+ var   WUnits=W_Units;
+  var  PUnits= P_Units;
+  var  PresUnits=Pres_Units;
+  var direction="";
+  //Code to determin direction arrow for widget
+if (winddeg &gt;348.75||winddeg==360|| winddeg&lt;11.25)
+    direction ="⭣  N ";
+if (winddeg &lt;348.75&amp;&amp;winddeg&gt;326.25)
+    direction ="⭨ NNW ";
+  if (winddeg &lt;326.25&amp;&amp;winddeg&gt;303.75)
+    direction ="⭨ NW ";
+if (winddeg &lt;303.75&amp;&amp;winddeg&gt;281.25)
+    direction ="⭨ WNW ";
+if (winddeg &lt;281.25&amp;&amp;winddeg&gt;258.75)
+    direction ="⭢ W ";
+if(winddeg &lt;258.75&amp;&amp;winddeg&gt;236.25)
+    direction ="⭧ WSW ";
+if (winddeg&lt;236.25&amp;&amp;winddeg&gt;223.75)
+    direction ="⭧ SW ";
+if (winddeg &lt;223.75&amp;&amp;winddeg&gt;181.25)
+    direction ="⭧ SSW ";
+if (winddeg &lt;181.25&amp;&amp;winddeg&gt;168.75)
+    direction ="⭡ S ";
+if (winddeg &lt;168.75&amp;&amp;winddeg&gt;146.75)
+    direction ="⭦ SSE ";
+ if (winddeg &lt;146.75&amp;&amp;winddeg&gt;123.75)
+    direction ="⭦ SE ";
+ if (winddeg &lt;123.75&amp;&amp;winddeg&gt;101.25)
+    direction ="⭦ ESE ";
+ if (winddeg &lt;101.25&amp;&amp;winddeg&gt;88.75)
+    direction ="⭠ E ";
+ if (winddeg &lt;88.75&amp;&amp;winddeg&gt;56.25)
+    direction ="⭩ ENE ";
+ if (winddeg &lt;56.25&amp;&amp;winddeg&gt;44.75)
+    direction ="⭩ NE ";
+ if (winddeg &lt;44.75&amp;&amp;winddeg&gt;11.25)
+    direction ="⭩ NNE ";
+ 
+ // if(count == 0 ){ 
+    if (Oldpresure != presure){
+      Oldpresure = presure;
+    Program.RaiseEvent("StatusWidget.Barometer","🔮Trend"+arrow+presure+PresUnits,"");
+      if (presure&gt;BarHi || presure&lt;BarLow)
+        {Program.RaiseEvent("StatusWidget.Forecast:",  "Conditions Alert⚠️" , "Current Barometer reading");
+        }
+      else{
+         if(presure&gt;1010 &amp;&amp; presure&lt;1020)
+       {Program.RaiseEvent("StatusWidget.Forecast:",  "⛅Changing" , "Current Barometer reading");
+    }if(presure&gt;1020 &amp;&amp; presure&lt;1035)
+   {Program.RaiseEvent("StatusWidget.Forecast:",  "🌤"+ "Dry" , "");
+   }if(presure&gt;1035 &amp;&amp; presure&lt;1070)
+   {Program.RaiseEvent("StatusWidget.Forecast:",  "☀️" + "Very Dry" , "");
+    }if(presure&gt;980 &amp;&amp; presure&lt;1010)
+      if (temperature&lt;0)
+   {Program.RaiseEvent("StatusWidget.Forecast:",  "🌨" + "Snow or Ice" , "");
+    }else
+    {Program.RaiseEvent("StatusWidget.Forecast:",  "☔" + "Rain" , "");
+  }if(presure&lt;980)
+   {Program.RaiseEvent("StatusWidget.Forecast:",  "⛈" + "Storm Alert" , "");
+    }
+    }
+  }
+    if (humidity==null)humidity=0.0;
+      if (Oldhumidity !=humidity){
+        Oldhumidity =humidity;
+       if (humidity&gt;HumidHi)      
+  {Program.RaiseEvent("StatusWidget.Humidity:",  "Alert!💧"+humidity+"%" , "Current Humidity reading");
+  }else{
+    Program.RaiseEvent("StatusWidget.Humidity:",  "🌫️" + humidity+"%" , "Current Humidity reading");
+  }
+      }
+
+      if (Oldsnow !=snow || Oldrain!= rain){
+        Oldsnow =snow;
+        Oldrain= rain;
+      if(snow==0 &amp;&amp; temperature &gt; 0)
+        {
+    if (rain==0)
+    {Program.RaiseEvent("StatusWidget.Precip:",  "☂" + rain+PUnits , "Current Rain reading");
+  }else{
+      if (HiPrecip==rain){
+      Program.RaiseEvent("StatusWidget.Precip:",  "Alert⛈"+ rain+PUnits , "Current Rain reading");
+    }
+   else 
+   {Program.RaiseEvent("StatusWidget.Precip:",  "Alert☔"+ rain+PUnits , "Current Rain reading");
+    }
+  }
+   }     
+      if(snow!=0 &amp;&amp; temperature &lt; 0)
+        {
+           if (HiPrecip==snow){
+      Program.RaiseEvent("StatusWidget.Precip:",  "Alert❄"+ snow+PUnits , "Current Rain reading");
+    }
+       else {Program.RaiseEvent("StatusWidget.Precip:",  "🌨" + snow+PUnits , "Current Snow reading");
+      }
+      }
+     
+      }
+      if (Olddirection!=direction){
+        Olddirection=direction;
+      Program.RaiseEvent("StatusWidget.WindDir:","🧭"+direction,""); 
+     } 
+      if (Oldwind!=wind){
+        Oldwind=wind;
+    if (wind &gt;HiWind )
+      {Program.RaiseEvent("StatusWidget.WinSpeed",  "Alert!🌪️"+" " + wind+WUnits , "Current Wind reading");
+      }else
+  {Program.RaiseEvent("StatusWidget.WinSpeed",  "💨"+" " + wind+WUnits , "Current Wind reading");
+  }  
+  }
+   
+      if (Oldtemperature !=temperature){
+    Oldtemperature =temperature;
+        if(temperature&gt;HiTemp)
+          {Program.RaiseEvent("StatusWidget.Temp:",  "Alert!🔥" + temperature+TUnits , "Current Temperature reading");
+  }
+        else{
+          if (temperature&gt;LowTemp)
+              {Program.RaiseEvent("StatusWidget.Temp:",  "🌡️" + temperature+TUnits , "Current Temperature reading");
+      }  else
+      {Program.RaiseEvent("StatusWidget.Temp:",  "Alert!❄" + temperature+TUnits , "Current Temperature reading");
+  }
+  }
+      }  
+ 
+ smart_devices.Each((mod)=&gt; {
+    var timeout = mod.Parameter(time_out).DecimalValue;
+    var condition = mod.Parameter(Con_Watch).Value;//TEMP, WIND.....
+    //var action = mod.Parameter(Con_Action).Value;//ON or OFF
+    var trigger= mod.Parameter(Con_Trigger).Value;//&lt; or &gt;
+    var val= mod.Parameter(Con_OnNumber).DecimalValue;//-40 to 1070
+    var offval= mod.Parameter(Con_OffNumber).DecimalValue;//-40 to 1070
+  var NoOff=true;
+    if (val==1070 &amp;&amp; offval==170)
+        NoOff=false;
+ // temperature triggers
+    if (condition == "TEMP"&amp;&amp; trigger== "&gt;")     
+    {if (val &lt;temperature &amp;&amp; mod.IsOff&amp;&amp; val !=1070)
+        {mod.On();}
+    if (offval&lt; temperature &amp;&amp;mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+            {mod.Off();}
+    if (offval&gt; temperature &amp;&amp;mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}     
+    }
+    if (condition== "TEMP"&amp;&amp; trigger == "&lt;")
+    {if (val&gt; temperature &amp;&amp;  mod.IsOff&amp;&amp; val !=1070)
+        {mod.On();}      
+     if (offval&gt;temperature  &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+     if (offval&lt; temperature &amp;&amp;mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+   
+    //Wind triggers
+    if (condition == "WIND"&amp;&amp; trigger== "&gt;")
+    {if (val &lt; wind &amp;&amp;  mod.IsOff&amp;&amp; val !=1070)
+        {mod.On();}
+    if (offval&lt; wind &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval&gt; wind &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();} 
+     
+    }
+    if (condition== "WIND"&amp;&amp; trigger == "&lt;")
+    {if (val &gt; wind &amp;&amp;  mod.IsOff&amp;&amp; val !=1070)
+        {mod.On();}
+    if (offval &gt;wind &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval &lt;wind &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();} 
+    }
+    
+    // Rain triggers
+    if (condition == "RAIN"&amp;&amp; trigger== "&gt;")     
+    {if (val &lt; rain &amp;&amp; mod.IsOff&amp;&amp; val !=1070)
+        {mod.On();}
+    if (offval &lt; rain &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval &gt; rain &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+     if (condition == "RAIN"&amp;&amp; trigger== "&lt;")     
+    {if (val &gt; rain &amp;&amp;  mod.IsOff&amp;&amp; val !=1070)
+        {mod.On();}
+     if (offval &gt; rain &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval &lt; rain &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+       
+    //Snow triggers
+    if (condition== "SNOW"&amp;&amp; trigger == "&lt;")
+    {if (val &gt; snow &amp;&amp;  mod.IsOff)
+        {mod.On();}      
+    if (offval &gt;snow &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval &lt;snow &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+    
+     if (condition== "SNOW"&amp;&amp; trigger == "&gt;")
+    {if (val &lt; snow &amp;&amp;  mod.IsOff)
+       { mod.On();}      
+    if (offval &lt;snow &amp;&amp;  mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+     if (offval &gt;snow &amp;&amp;  mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+       {mod.Off();}
+    }
+    //Humidity trigger
+    if (condition == "HUMID"&amp;&amp; trigger== "&gt;")
+    {if (val &lt; humidity &amp;&amp; mod.IsOff)
+        {mod.On();}
+    if (offval &lt; humidity &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval &gt; humidity &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+    if (condition== "HUMID"&amp;&amp; trigger == "&lt;")
+    {if (val &gt; humidity &amp;&amp; mod.IsOff)
+        {mod.On();}
+    if (offval &gt;humidity&amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}   
+    if (offval &lt;humidity &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+  }
+   //PRESSURE triggers
+     if (condition == "PRESS"&amp;&amp; trigger== "&gt;")     
+    {if (val &lt; presure &amp;&amp; mod.IsOff)
+        {mod.On();}
+    if (offval &lt; presure &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+    if (offval &gt; presure &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+    if (condition== "PRESS"&amp;&amp; trigger == "&lt;")
+    {if (val &gt; presure &amp;&amp;  mod.IsOff &amp;&amp; val !=1070)
+        {mod.On();}      
+     if (offval &gt;presure &amp;&amp; mod.IsOn &amp;&amp; offval !=1070&amp;&amp; NoOff==true)
+        {mod.Off();}
+     if (offval &lt; presure &amp;&amp; mod.IsOn&amp;&amp; offval !=1070&amp;&amp; NoOff==false)
+        {mod.Off();}
+    }
+   
+    
+    // default timeout is 0 seconds &amp; may not be wanted or needed
+       if (timeout &gt;0 &amp;&amp; mod.IsOn)
+    {
+      var lastevent = mod.Parameter(LAST_EVENT).UpdateTime;
+      var lastupdate = mod.Parameter("Status.Level").UpdateTime;
+      var checktime = lastevent.Ticks;
+      if (checktime &lt; lastupdate.Ticks) checktime = lastupdate.Ticks;
+      var elapsed = new TimeSpan(DateTime.UtcNow.Ticks - checktime);
+      if (elapsed.TotalSeconds &gt; timeout) {
+        Program.Notify(mod.Instance.Address + " " + mod.Instance.Name + "&lt;br&gt;switched OFF.");
+        mod.Off();
+      }
+    } 
+    
+    return false;
+  });
+  Pause(5);
+}
+
+</ScriptSource>
+  <ScriptErrors>[]</ScriptErrors>
+  <Domain>HomeAutomation.HomeGenie.Automation</Domain>
+  <Address>1008</Address>
+  <Name>Weather Alerter</Name>
+  <Description>Trigger events on Weather  conditions from Openweather Map.   The Widget displays info and warnings for 
+Barometer units or conditions(selectable), Wind, Humidity, Temperature, &amp; Rain or Snow depending on Temperature
+</Description>
+  <Group>Weather and Environment</Group>
+  <Features>
+    <ProgramFeature>
+      <FieldType>checkbox</FieldType>
+      <ForDomains />
+      <ForTypes>Sensor,Switch,Light,Dimmer,Siren</ForTypes>
+      <Property>WeatherTriggers.Enable</Property>
+      <Description>Enable WeatherTrigger Control</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains />
+      <ForTypes>Sensor,Switch,Light,Dimmer,Siren</ForTypes>
+      <Property>WeatherTriggers.Condition</Property>
+      <Description>Type Condition (TEMP,WIND,RAIN,SNOW,PRESS,HUMID)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>text</FieldType>
+      <ForDomains />
+      <ForTypes>Sensor,Switch,Light,Dimmer,Siren</ForTypes>
+      <Property>WeatherTriggers.Trigger</Property>
+      <Description>Type when value is (&gt; or &lt;)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>slider:-40:1070:5</FieldType>
+      <ForDomains />
+      <ForTypes>Light,Sensor,Switch,Dimmer,Siren</ForTypes>
+      <Property>WeatherTriggers.OnNumber</Property>
+      <Description>Select On triggering value (1070=ignor)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>slider:-40:1070:5</FieldType>
+      <ForDomains />
+      <ForTypes>Light,Sensor,Switch,Dimmer,Siren</ForTypes>
+      <Property>WeatherTriggers.OffNumber</Property>
+      <Description>Select Off triggering value(1070=ignor)</Description>
+    </ProgramFeature>
+    <ProgramFeature>
+      <FieldType>slider:0:3600:30</FieldType>
+      <ForDomains />
+      <ForTypes>Light,Sensor,Switch,Dimmer,Siren</ForTypes>
+      <Property>WeatherTriggers.Timeout</Property>
+      <Description>Seconds till module turns Off (0=ignor)</Description>
+    </ProgramFeature>
+  </Features>
+  <AutoRestartEnabled>false</AutoRestartEnabled>
+  <ActivationTime xsi:nil="true" />
+  <TriggerTime>2019-05-06T16:08:52.983777Z</TriggerTime>
+  <Type>CSharp</Type>
+  <IsEnabled>true</IsEnabled>
+</ProgramBlock>
