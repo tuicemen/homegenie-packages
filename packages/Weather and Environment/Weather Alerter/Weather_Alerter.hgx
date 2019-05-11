@@ -30,6 +30,8 @@
   <ScriptSource>//Weather Alerter C#
 //tuicemen 2019 ver 1.0 beta
 //widget options
+Program.Parameter("Sensor.DayHi").Value = Program.WithName("OpenWeatherMap").Parameter("Sensor.DayHi").Value;
+Program.Parameter("Sensor.DayLow").Value=Program.WithName("OpenWeatherMap").Parameter("Sensor.DayLow").Value;    
 var Units=Program.Option("Weather.Units").DecimalValue;// coded
 var SeverWind= Program.Option("Weather.WindSpeed").DecimalValue;
 var SeverBar= Program.Option("Weather.Barometer").DecimalValue;
@@ -102,6 +104,9 @@ var humidity = Program.WithName("OpenWeatherMap").Parameter("Sensor.Humidity").D
 var oldtime=  Program.WithName("OpenWeatherMap").Parameter("Conditions.LastUpdated").Value;  
 var winddeg =Program.WithName("OpenWeatherMap").Parameter("Sensor.Wind.Direction").DecimalValue;
 var conditions= Program.WithName("OpenWeatherMap").Parameter("Conditions.Status").Value;
+Program.Parameter("Sensor.DayHi").Value = Program.WithName("OpenWeatherMap").Parameter("Sensor.DayHi").Value;
+Program.Parameter("Sensor.DayLow").Value=Program.WithName("OpenWeatherMap").Parameter("Sensor.DayLow").Value;
+    
  if (Units== 2 )// conversion needs to be done
  {temperature=(temperature*9)/5+32;
   temperature = Math.Round(temperature, 1);
