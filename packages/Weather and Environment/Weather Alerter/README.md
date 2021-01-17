@@ -1,4 +1,4 @@
-beta testing.
+
 A weather module which pulls info from the OpenWeatherMap now in Homegenie
 It allows for a quick reference of weather conditions and alerts based of different conditons.
 Specific email Sever Weather alerts can be sent to recipients via email based on users inputted values for wind and barometer settings.
